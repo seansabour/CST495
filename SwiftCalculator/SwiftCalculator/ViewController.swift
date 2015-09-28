@@ -40,7 +40,6 @@ class ViewController: UIViewController {
                 numberExists = true
             }
         }
-        
     }
     
     
@@ -80,7 +79,7 @@ class ViewController: UIViewController {
         while(!operandStack.isEmpty){
             operandStack.removeLast()
         }
-        historyLabel.text = "0"
+        historyLabel.text = ""
     }
     
     // Removes 2 numbers off stack and performs function
