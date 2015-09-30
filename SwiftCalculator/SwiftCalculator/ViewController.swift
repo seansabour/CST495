@@ -13,112 +13,110 @@ class ViewController: UIViewController {
     @IBOutlet weak var display: UILabel!
     
     var numberExists = false
+    var brain = CalculatorBrain()
     
     // Adds digit to display text, and checks if PI is pressed
     // Also checks to make sure floating point is legal
     @IBAction func pressedDigit(sender: UIButton) {
         let digit = sender.currentTitle!
-        let pi = M_PI
         if numberExists {
-            if digit == "π" {
-                enter()
-                display.text = "\(pi)"
-                enter()
-            } else if digit == "."{
+            if digit == "."{
                 if display.text!.rangeOfString(".") == nil{
                     display.text = display.text! + digit
                 }
-            } else {
+            }else {
                 display.text = display.text! + digit
             }
         } else {
-            if digit == "π" {
-                display.text = "\(pi)"
-                enter()
-            } else {
-                display.text = digit
-                numberExists = true
-            }
+            display.text = digit
+            numberExists = true
         }
+        updateHistory()
     }
     
-    
-    @IBOutlet weak var historyLabel: UILabel!
     // Adds operand and operation to UI Label
-    func addToHistory(value: String) {
-        if historyLabel.text! == "0" {
-            historyLabel.text = value
-        } else {
-            historyLabel.text = historyLabel.text! + " " + value
-        }
+    @IBOutlet weak var history: UILabel!
+    
+    func updateHistory() {
+        history.text = brain.description + (!numberExists && brain.lastOpIsAnOperation ? "=" : "")
     }
     
     // Performs operation and adds operation to history.
     @IBAction func operate(sender: UIButton) {
-        let operation = sender.currentTitle!
-        if numberExists && operation != "C" {
+        if numberExists {
             enter()
         }
-        addToHistory("\(operation)")
-        switch operation {
-        case "*": performOperation { $0 * $1 }
-        case "/": performOperation { $1 / $0 }
-        case "+": performOperation { $0 + $1 }
-        case "-": performOperation { $1 - $0 }
-        case "√": performOperation { sqrt($0) }
-        case "cos": performOperation { cos($0) }
-        case "sin": performOperation { sin($0) }
-        case "C": clearCalc()
-        default: break
+        if let operation = sender.currentTitle {
+            if let result = brain.performOperation(operation) {
+                displayValue = result
+            } else {
+                displayValue = nil
+            }
         }
+        updateHistory()
     }
     
     // Clears calculator history and operand stack
-    func clearCalc() {
+    @IBAction func clearCalc(sender: UIButton?) {
         display.text = "0"
-        while(!operandStack.isEmpty){
-            operandStack.removeLast()
-        }
-        historyLabel.text = ""
+        brain.clear()
+        numberExists = false
+        updateHistory()
     }
     
-    // Removes 2 numbers off stack and performs function
-    func performOperation(operation:(Double,Double) -> Double) {
-        if operandStack.count >= 2 {
-            displayValue = operation(operandStack.removeLast(), operandStack.removeLast())
-            enter()
-        }
-    }
-    
-    // Removes number off stack and performs function
-    private func performOperation(operation: Double -> Double) {
-        if operandStack.count >= 1 {
-            displayValue = operation(operandStack.removeLast())
-            enter()
-        }
-    }
-    
-    var operandStack = Array<Double>()
     
     // Adds number to stack and history label
     @IBAction func enter() {
         numberExists = false
-        operandStack.append(displayValue)
-        addToHistory("\(displayValue)")
+        if let result = brain.pushOperand(displayValue ?? 0) {
+            displayValue = result;
+        } else {
+            displayValue = nil
+        }
+        updateHistory()
     }
     
+    @IBAction func pushM(sender: UIButton) {
+        if numberExists {
+            enter()
+        }
+        if let result = brain.evaluate(){
+            brain.pushOperand("M")
+            displayValue = result
+        } else {
+            displayValue = nil
+        }
+        updateHistory()
+    }
+    
+    @IBAction func setM(sender: UIButton) {
+        if displayValue != nil {
+            numberExists = false
+            brain.variableValues["M"] = displayValue
+            if let result = brain.evaluate() {
+                displayValue = result
+            } else {
+                displayValue = nil
+            }
+        }
+        updateHistory()
+    }
     
     // Generates display value
-    var displayValue: Double {
+    var displayValue: Double? {
         get {
-            let displayText = display.text!
-            let textNumber = NSNumberFormatter().numberFromString(displayText)
-            return textNumber!.doubleValue
-        }
-        set {
-            display.text = "\(newValue)"
+            if let displayValueAsDouble = NSNumberFormatter().numberFromString(display.text!)?.doubleValue {
+                return displayValueAsDouble
+            }
+            return nil
+        } set {
+            display.text = newValue != nil ? "\(newValue!)" : " "
             numberExists = false
         }
+    }
+    
+    override func viewDidLoad() {
+        clearCalc(nil)
     }
 }
 
